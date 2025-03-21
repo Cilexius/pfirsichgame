@@ -1,1 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rub the Peach</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #000000;
+      position: relative;
+      overflow: hidden;
+    }
+    #peach {
+      font-size: 100px;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.1s ease, filter 0.5s ease, opacity 0.5s ease;
+      position: relative;
+      z-index: 10;
+      --glow-color: rgba(255, 160, 122, 0.9);
+      --glow-radius: 10px;
+    }
+    #peach.rubbing {
+      transform: scale(var(--scale));
+      filter: drop-shadow(0 0 var(--glow-radius) var(--glow-color));
+      animation: shake 0.1s infinite;
+    }
+    #peach.teasing {
+      animation: teaseShake 0.5s ease-in-out;
+    }
+    #peach.climax {
+      animation: climaxPulse 1.5s ease-in-out forwards;
+    }
+    p {
+      font-size: 18px;
+      color: #fff;
+      margin: 20px 0;
+    }
+    #video-frame {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      opacity: 0;
+      transition: opacity 0.5s ease-in-out;
+      z-index: 5;
+      max-width: 100%;
+      max-height: 100vh;
+      width: 640px; /* Default size, adjust as needed */
+      height: 360px;
+      border: none;
+    }
+    #video-frame.revealed {
+      opacity: 1;
+    }
+    .heart, .firework {
+      position: absolute;
+      pointer-events: none;
+      z-index: 20;
+    }
+    .heart {
+      color: #e91e63;
+      animation: heartCurve var(--duration) linear forwards;
+    }
+    .firework {
+      color: #ffd700;
+      font-size: 50px;
+      animation: scatter var(--duration) ease-out forwards;
+    }
+    @keyframes heartCurve {
+      0% { opacity: 1; transform: translate(0, 0) rotate(var(--rotate)); }
+      33% { transform: translate(calc(var(--curve) * 0.33), -50px) rotate(var(--rotate)); }
+      66% { transform: translate(calc(var(--curve) * 0.66), -100px) rotate(var(--rotate)); }
+      100% { opacity: 0; transform: translate(var(--curve), -150px) rotate(var(--rotate)); }
+    }
+    @keyframes shake {
+      0% { transform: scale(var(--scale)) rotate(0deg); }
+      25% { transform: scale(var(--scale)) rotate(1deg); }
+      50% { transform: scale(var(--scale)) rotate(0deg); }
+      75% { transform: scale(var(--scale)) rotate(-1deg); }
+      100% { transform: scale(var(--scale)) rotate(0deg); }
+    }
+    @keyframes teaseShake {
+      0% { transform: scale(1) rotate(0deg); }
+      25% { transform: scale(1.05) rotate(5deg); }
+      50% { transform: scale(1) rotate(0deg); }
+      75% { transform: scale(1.05) rotate(-5deg); }
+      100% { transform: scale(1) rotate(0deg); }
+    }
+    @keyframes scatter {
+      0% { opacity: 1; transform: translate(0, 0) scale(1); }
+      50% { transform: translate(var(--dx), var(--dy)) scale(1.2); }
+      100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1.2); }
+    }
+    @keyframes climaxPulse {
+      0% { transform: scale(1.5); filter: drop-shadow(0 0 30px #ffffff); }
+      50% { transform: scale(1.8); filter: drop-shadow(0 0 40px #ffffff); }
+      100% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(255, 160, 122, 0.9)); }
+    }
+  </style>
+</head>
+<body>
+  <span id="peach">🍑</span>
+  <p>☆ 𝓘𝓷𝓪𝓢𝓲𝓵𝓳𝓪 ☆</p>
+  <iframe id="video-frame" src="https://drive.google.com/file/d/1nnpTIeb0pNrmMDRxreLo2TULb3mTaRLX/preview" 
+          allow="autoplay; fullscreen" allowfullscreen></iframe>
 
+  <script>
+    const peach = document.getElementById('peach');
+    const videoFrame = document.getElementById('video-frame');
+    let isRubbing = false;
+    let rubStartTime = null;
+    let lastRubTime = null;
+    const rubDurationNeeded = 20000; // 20 seconds
+    const resetThreshold = 1000; // 1 second pause resets
+    const fireworkStart = 18000; // Fireworks and scaling start at 18 seconds
+    const whiteGlowStart = 19000; // White glow starts at 19 seconds
+    let checkInterval = null;
+    let effectInterval = null;
+    let teaseInterval = null;
+
+    // Desktop: Mouse events
+    peach.addEventListener('mousedown', startRub);
+    peach.addEventListener('mousemove', rub);
+    peach.addEventListener('mouseup', stopRub);
+    peach.addEventListener('mouseleave', stopRub);
+
+    // Mobile: Touch events
+    peach.addEventListener('touchstart', startRub, { passive: false });
+    peach.addEventListener('touchmove', rub, { passive: false });
+    peach.addEventListener('touchend', stopRub);
+
+    // Start the teasing shake when page loads
+    startTeasing();
+
+    function startRub(e) {
+      e.preventDefault();
+      if (!isRubbing) {
+        isRubbing = true;
+        rubStartTime = Date.now();
+        lastRubTime = rubStartTime;
+        peach.classList.add('rubbing');
+        peach.classList.remove('teasing');
+        peach.style.setProperty('--scale', '1.1');
+        clearInterval(teaseInterval);
+        checkInterval = setInterval(checkRubProgress, 100);
+        effectInterval = setInterval(spawnEffect, 300);
+      }
+    }
+
+    function rub(e) {
+      if (!isRubbing) return;
+      e.preventDefault();
+      lastRubTime = Date.now();
+    }
+
+    function stopRub() {
+      if (!isRubbing) return;
+      isRubbing = false;
+      peach.classList.remove('rubbing');
+      peach.style.setProperty('--scale', '1');
+      peach.style.setProperty('--glow-radius', '10px');
+      peach.style.setProperty('--glow-color', 'rgba(255, 160, 122, 0.9)');
+      clearInterval(checkInterval);
+      clearInterval(effectInterval);
+      rubStartTime = null;
+      startTeasing();
+    }
+
+    function checkRubProgress() {
+      const now = Date.now();
+      const timeSinceLastRub = now - lastRubTime;
+      const totalRubTime = now - rubStartTime;
+
+      if (timeSinceLastRub > resetThreshold) {
+        stopRub();
+        return;
+      }
+
+      const progress = totalRubTime / rubDurationNeeded;
+      const acceleratedProgress = progress * progress;
+      let glowRadius = 10 + acceleratedProgress * 20;
+      let glowColor = '';
+      const startColor = { r: 255, g: 160, b: 122 };
+      const endColor = { r: 233, g: 30, b: 99 };
+      let r = Math.round(startColor.r + (endColor.r - startColor.r) * acceleratedProgress);
+      let g = Math.round(startColor.g + (endColor.g - startColor.g) * acceleratedProgress);
+      let b = Math.round(startColor.b + (endColor.b - startColor.b) * acceleratedProgress);
+
+      if (totalRubTime >= fireworkStart && totalRubTime < rubDurationNeeded) {
+        const finalPhaseProgress = (totalRubTime - fireworkStart) / (rubDurationNeeded - fireworkStart);
+        const acceleratedScale = finalPhaseProgress * finalPhaseProgress;
+        const scale = 1.1 + acceleratedScale * 0.4;
+        peach.style.setProperty('--scale', scale);
+      }
+
+      if (totalRubTime >= whiteGlowStart) {
+        glowRadius = 30;
+        glowColor = '#ffffff';
+      }
+
+      peach.style.setProperty('--glow-radius', `${glowRadius}px`);
+      peach.style.setProperty('--glow-color', glowColor || `rgba(${r}, ${g}, ${b}, 0.9)`);
+
+      if (totalRubTime >= rubDurationNeeded) {
+        peach.classList.remove('rubbing');
+        peach.classList.add('climax');
+        triggerStarburst();
+        isRubbing = false;
+        clearInterval(checkInterval);
+        clearInterval(effectInterval);
+        clearInterval(teaseInterval);
+
+        // After climax, fade out peach and reveal iframe video
+        setTimeout(() => {
+          peach.style.opacity = '0';
+          setTimeout(() => {
+            peach.style.display = 'none';
+            videoFrame.classList.add('revealed');
+          }, 500);
+        }, 1500);
+      }
+    }
+
+    function spawnEffect() {
+      const peachRect = peach.getBoundingClientRect();
+      const totalRubTime = Date.now() - rubStartTime;
+      const isFireworkTime = totalRubTime >= fireworkStart && totalRubTime < rubDurationNeeded;
+
+      const bodyRect = document.body.getBoundingClientRect();
+      const offsetX = (Math.random() - 0.5) * 80;
+      const offsetY = (Math.random() - 0.5) * 40;
+      const x = peachRect.left - bodyRect.left + peachRect.width / 2 + offsetX;
+      const y = peachRect.top - bodyRect.top + peachRect.height / 2 + offsetY;
+
+      spawnHeart(x, y);
+      if (isFireworkTime) {
+        const progress = totalRubTime / rubDurationNeeded;
+        const duration = 2 - progress * 1.5;
+        spawnScatteringFirework(x, y, duration);
+      }
+    }
+
+    function spawnHeart(x, y) {
+      const size = 25 + Math.random() * 10;
+      const duration = 2.5 + Math.random();
+      const curve = (Math.random() - 0.5) * 60;
+      const rotate = (Math.random() - 0.5) * 30;
+
+      const heart = document.createElement('span');
+      heart.className = 'heart';
+      heart.textContent = '❤️';
+      heart.style.color = '#e91e63';
+      heart.style.fontSize = `${size}px`;
+      heart.style.left = `${x}px`;
+      heart.style.top = `${y}px`;
+      heart.style.setProperty('--duration', `${duration}s`);
+      heart.style.setProperty('--curve', `${curve}px`);
+      heart.style.setProperty('--rotate', `${rotate}deg`);
+      document.body.appendChild(heart);
+      setTimeout(() => heart.remove(), duration * 1000);
+    }
+
+    function spawnScatteringFirework(x, y, duration) {
+      const angle = Math.random() * 2 * Math.PI;
+      const distance = 100 + Math.random() * 50;
+      const dx = Math.cos(angle) * distance;
+      const dy = Math.sin(angle) * distance;
+      const firework = document.createElement('span');
+      firework.className = 'firework';
+      firework.textContent = '✨';
+      firework.style.color = '#ffd700';
+      firework.style.fontSize = '50px';
+      firework.style.left = `${x}px`;
+      firework.style.top = `${y}px`;
+      firework.style.setProperty('--dx', `${dx}px`);
+      firework.style.setProperty('--dy', `${dy}px`);
+      firework.style.setProperty('--duration', `${duration}s`);
+      document.body.appendChild(firework);
+      setTimeout(() => firework.remove(), duration * 1000);
+    }
+
+    function triggerStarburst() {
+      const peachRect = peach.getBoundingClientRect();
+      const bodyRect = document.body.getBoundingClientRect();
+      const x = peachRect.left - bodyRect.left + peachRect.width / 2;
+      const y = peachRect.top - bodyRect.top + peachRect.height / 2;
+      for (let i = 0; i < 50; i++) {
+        spawnScatteringFirework(x, y, 1);
+      }
+    }
+
+    function startTeasing() {
+      if (videoFrame.classList.contains('revealed')) return;
+      teaseInterval = setInterval(() => {
+        if (!isRubbing) {
+          peach.classList.add('teasing');
+          setTimeout(() => peach.classList.remove('teasing'), 500);
+        }
+      }, Math.random() * 3000 + 2000);
+    }
+  </script>
+</body>
+</html>
