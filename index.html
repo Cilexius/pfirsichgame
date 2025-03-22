@@ -44,21 +44,18 @@
       margin: 20px 0;
     }
     #video-frame {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      opacity: 0;
+      position: fixed; /* Changed from absolute to fixed */
+      top: 0; /* Fullscreen from the start */
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0; /* Keep your fade-in effect */
       transition: opacity 0.5s ease-in-out;
-      z-index: 5;
-      max-width: 100%;
-      max-height: 100vh;
-      width: 640px; /* Default size, adjust as needed */
-      height: 360px;
+      z-index: 5; /* Stays below peach but above background */
       border: none;
     }
     #video-frame.revealed {
-      opacity: 1;
+      opacity: 1; /* Fades in as before */
     }
     .heart, .firework {
       position: absolute;
